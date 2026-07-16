@@ -26,9 +26,9 @@ dependencies {
     implementation 'org.postgresql:postgresql'
     implementation 'org.liquibase:liquibase-core'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
-    annotationProcessor "org.projectlombok:lombok-mapstruct-binding:${versions.lombokMapstructBindingVersion}"
-    compileOnly 'org.projectlombok:lombok:1.18.30'
-    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor "org.mapstruct:mapstruct-processor:${versions.mapstruct}"
+    implementation "org.mapstruct:mapstruct:${versions.mapstruct}"
+
 
     testCompileOnly 'org.projectlombok:lombok:1.18.30'
     testAnnotationProcessor 'org.projectlombok:lombok:1.18.30'
