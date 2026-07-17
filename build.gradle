@@ -1,8 +1,10 @@
+
 plugins {
     id 'java'
     id 'org.springframework.boot' version '3.4.13'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'io.freefair.lombok' version '8.4'
+    id 'nu.studer.jooq' version '9.0'
 }
 
 apply from: 'version.gradle'
@@ -21,23 +23,98 @@ repositories {
     mavenCentral()
 }
 
+ext {
+    jooq = '3.19.23'
+    liquibase = '4.31.1'
+    mapstruct = '1.6.3'
+    lombok = '1.18.30'
+    slf4j = '2.0.16'
+
+    jooqConfig = [
+            edition    : nu.studer.gradle.jooq.JooqEdition.OSS,
+            packageName: 'org.senla.jooq.generated',
+            outputDir  : 'build/generated-src/jooq/main',
+            rootPath   : 'src/main/resources',
+            changelog  : 'db/changelog/db.changelog-master.xml'
+    ]
+
+}
+
+
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.postgresql:postgresql'
-    implementation 'org.liquibase:liquibase-core'
-    implementation 'org.springframework.boot:spring-boot-starter-validation'
-    annotationProcessor "org.mapstruct:mapstruct-processor:${versions.mapstruct}"
-    implementation "org.mapstruct:mapstruct:${versions.mapstruct}"
+    implementation "org.springframework.boot:spring-boot-starter-web"
+    implementation "org.springframework.boot:spring-boot-starter-validation"
+
+    implementation "org.springframework.boot:spring-boot-starter-jooq"
+    implementation "org.jooq:jooq:${jooq}"
+    implementation "org.postgresql:postgresql"
+    implementation "org.liquibase:liquibase-core:${liquibase}"
+
+    annotationProcessor "org.mapstruct:mapstruct-processor:${mapstruct}"
+    implementation "org.mapstruct:mapstruct:${mapstruct}"
 
 
-    testCompileOnly 'org.projectlombok:lombok:1.18.30'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.30'
+    testCompileOnly "org.projectlombok:lombok:${lombok}"
+    testAnnotationProcessor "org.projectlombok:lombok:${lombok}"
 
-    testImplementation 'org.testcontainers:junit-jupiter'
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation "org.testcontainers:junit-jupiter"
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testImplementation "org.springframework.boot:spring-boot-starter-test"
+
+    jooqGenerator "org.jooq:jooq-meta-extensions-liquibase:${jooq}"
+    jooqGenerator "org.liquibase:liquibase-core:${liquibase}"
+    jooqGenerator "org.slf4j:slf4j-simple:${slf4j}"
 }
 
 test {
     useJUnitPlatform()
 }
+
+tasks.withType(nu.studer.gradle.jooq.JooqGenerate).configureEach {
+    launcher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+jooq {
+    version = jooq
+    edition = nu.studer.gradle.jooq.JooqEdition.OSS
+
+    configurations {
+        main {
+            generateSchemaSourceOnCompilation = true
+
+            generationTool {
+                logging = 'INFO'
+
+                generator {
+                    name = 'org.jooq.codegen.JavaGenerator'
+
+                    database {
+                        name = 'org.jooq.meta.extensions.liquibase.LiquibaseDatabase'
+                        properties {
+                            property {
+                                key = 'rootPath'
+                                value = jooqConfig.rootPath
+                            }
+                            property {
+                                key = 'scripts'
+                                value = jooqConfig.changelog
+                            }
+                            property {
+                                key = 'includeLiquibaseTables'
+                                value = 'false'
+                            }
+                        }
+                    }
+
+                    target {
+                        packageName = jooqConfig.packageName
+                        directory = jooqConfig.outputDir
+                    }
+                }
+            }
+        }
+    }
+}
+

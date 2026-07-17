@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+           http://www.liquibase.org/xml/ns/dbchangelog
+           http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+
+<changeSet id="2-create-task-content-table" author="AlexNiunko">
+    <preConditions onFail="MARK_RAN" onError="HALT">
+        <not>
+            <tableExists tableName="task_content"/>
+        </not>
+    </preConditions>
+
+    <createTable tableName="task_content">
+        <column name="id" type="bigserial">
+            <constraints primaryKey="true" nullable="false" primaryKeyName="pk_task_content"/>
+        </column>
+        <column name="position" type="integer"/>
+        <column name="created_at" type="timestamp(6)"/>
+        <column name="updated_at" type="timestamp(6)"/>
+        <column name="content" type="varchar(10000)"/>
+        <column name="task_id" type="bigserial">
+            <constraints nullable="false" foreignKeyName="fk_task_content_task"
+                         referencedTableName="task" referencedColumnNames="id"/>
+        </column>
+    </createTable>
+
+    <rollback>
+        <dropTable tableName="task_content"/>
+    </rollback>
+</changeSet>
+
+</databaseChangeLog>
