@@ -17,16 +17,29 @@
             <column name="id" type="bigserial">
                 <constraints primaryKey="true" nullable="false" primaryKeyName="pk_task_error"/>
             </column>
-            <column name="created_at" type="timestamp(6)"/>
-            <column name="updated_at" type="timestamp(6)"/>
-            <column name="message" type="varchar(255)"/>
-            <column name="task_id" type="bigserial">
-                <constraints nullable="false" foreignKeyName="fk_task_error_task"
-                             referencedTableName="task" referencedColumnNames="id"/>
+            <column name="created_at" type="timestamp(6)" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp(6)" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="message" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="task_id" type="bigint">
+                <constraints nullable="false"
+                             foreignKeyName="fk_task_error_task"
+                             referencedTableName="task"
+                             referencedColumnNames="id"/>
             </column>
         </createTable>
 
+        <createIndex tableName="task_error" indexName="idx_task_error_task_id">
+            <column name="task_id"/>
+        </createIndex>
+
         <rollback>
+            <dropIndex tableName="task_error" indexName="idx_task_error_task_id"/>
             <dropTable tableName="task_error"/>
         </rollback>
     </changeSet>

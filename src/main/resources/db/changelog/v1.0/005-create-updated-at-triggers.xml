@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+           http://www.liquibase.org/xml/ns/dbchangelog
+           http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="5-create-updated-at-triggers" author="AlexNiunko" dbms="postgresql">
+        <sql>
+            CREATE TRIGGER trg_task_set_updated_at
+                BEFORE UPDATE ON task
+                FOR EACH ROW
+            EXECUTE FUNCTION set_updated_at();
+        </sql>
+
+        <sql>
+            CREATE TRIGGER trg_task_content_set_updated_at
+                BEFORE UPDATE ON task_content
+                FOR EACH ROW
+            EXECUTE FUNCTION set_updated_at();
+        </sql>
+
+        <sql>
+            CREATE TRIGGER trg_task_error_set_updated_at
+                BEFORE UPDATE ON task_error
+                FOR EACH ROW
+            EXECUTE FUNCTION set_updated_at();
+        </sql>
+
+        <rollback>
+            DROP TRIGGER IF EXISTS trg_task_set_updated_at ON task;
+            DROP TRIGGER IF EXISTS trg_task_content_set_updated_at ON task_content;
+            DROP TRIGGER IF EXISTS trg_task_error_set_updated_at ON task_error;
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

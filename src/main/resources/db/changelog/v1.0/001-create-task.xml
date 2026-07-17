@@ -6,7 +6,6 @@
            http://www.liquibase.org/xml/ns/dbchangelog
            http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
 
-
     <changeSet id="1-create-task-table" author="AlexNiunko">
         <preConditions onFail="MARK_RAN" onError="HALT">
             <not>
@@ -18,17 +17,23 @@
             <column name="id" type="bigserial">
                 <constraints primaryKey="true" nullable="false" primaryKeyName="pk_task"/>
             </column>
-            <column name="version" type="bigint"/>
-            <column name="created_at" type="timestamp(6)"/>
-            <column name="updated_at" type="timestamp(6)"/>
-            <column name="language" type="varchar(5)"/>
-            <column name="status" type="varchar(20)"/>
+            <column name="created_at" type="timestamp(6)" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp(6)" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="language" type="varchar(5)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="varchar(20)">
+                <constraints nullable="false"/>
+            </column>
         </createTable>
 
         <rollback>
             <dropTable tableName="task"/>
         </rollback>
     </changeSet>
-
 
 </databaseChangeLog>

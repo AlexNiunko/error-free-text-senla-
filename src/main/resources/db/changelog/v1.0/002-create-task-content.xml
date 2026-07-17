@@ -6,31 +6,46 @@
            http://www.liquibase.org/xml/ns/dbchangelog
            http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
 
+    <changeSet id="2-create-task-content-table" author="AlexNiunko">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <not>
+                <tableExists tableName="task_content"/>
+            </not>
+        </preConditions>
 
-<changeSet id="2-create-task-content-table" author="AlexNiunko">
-    <preConditions onFail="MARK_RAN" onError="HALT">
-        <not>
-            <tableExists tableName="task_content"/>
-        </not>
-    </preConditions>
+        <createTable tableName="task_content">
+            <column name="id" type="bigserial">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_task_content"/>
+            </column>
+            <column name="position" type="integer">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp(6)" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp(6)" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="content" type="varchar(10000)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="task_id" type="bigint">
+                <constraints nullable="false"
+                             foreignKeyName="fk_task_content_task"
+                             referencedTableName="task"
+                             referencedColumnNames="id"
+                             deleteCascade="true"/>
+            </column>
+        </createTable>
 
-    <createTable tableName="task_content">
-        <column name="id" type="bigserial">
-            <constraints primaryKey="true" nullable="false" primaryKeyName="pk_task_content"/>
-        </column>
-        <column name="position" type="integer"/>
-        <column name="created_at" type="timestamp(6)"/>
-        <column name="updated_at" type="timestamp(6)"/>
-        <column name="content" type="varchar(10000)"/>
-        <column name="task_id" type="bigserial">
-            <constraints nullable="false" foreignKeyName="fk_task_content_task"
-                         referencedTableName="task" referencedColumnNames="id"/>
-        </column>
-    </createTable>
+        <createIndex tableName="task_content" indexName="idx_task_content_task_id">
+            <column name="task_id"/>
+        </createIndex>
 
-    <rollback>
-        <dropTable tableName="task_content"/>
-    </rollback>
-</changeSet>
+        <rollback>
+            <dropIndex tableName="task_content" indexName="idx_task_content_task_id"/>
+            <dropTable tableName="task_content"/>
+        </rollback>
+    </changeSet>
 
 </databaseChangeLog>
