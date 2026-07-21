@@ -19,4 +19,13 @@ spring:
     change-log: classpath:db/changelog/db.changelog-master.xml
 
 content-size: 100
-
+rest-client:
+  yandex-url: https://speller.yandex.net/services/spellservice.json/checkTexts
+  http:
+    connect-timeout-ms: 3000
+    socket-timeout-ms: 5000
+    connection-request-timeout-ms: 3000
+    connection-ttl-seconds: 30
+    idle-evict-seconds: 30
+    max-total: 100
+    max-per-route: 20

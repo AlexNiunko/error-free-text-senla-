@@ -1,9 +1,13 @@
 package org.senla.errorfreetext.service.impl;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.senla.errorfreetext.client.dto.ResponseSpeller;
+import org.senla.errorfreetext.dto.ContentDto;
 import org.senla.errorfreetext.service.ContentService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -66,6 +70,102 @@ public class ContentServiceImpl implements ContentService {
 
         log.debug("Разделение завершено, количество частей={}", result.size());
         return result;
+    }
+
+    @Override
+    public String buildData(List<ContentDto> parts) {
+
+        log.debug("Сборка текста из фрагментов: количество частей={}",
+                parts != null ? parts.size() : null);
+
+        if (parts == null || parts.isEmpty()) {
+            log.debug("Список частей пуст, возвращаю пустую строку");
+            return "";
+        }
+
+        String collect = parts.stream()
+                .sorted(Comparator.comparing(ContentDto::position))
+                .map(ContentDto::data)
+                .collect(Collectors.joining());
+
+        log.debug("Сборка текста завершена: итоговая длина={}", collect.length());
+        return collect;
+    }
+
+    @Override
+    public boolean existDigit(String content) {
+        boolean exists = content != null && content.matches(DIGIT);
+
+        log.trace("Проверка наличия цифр в тексте: длина={}, результат={}",
+                content != null ? content.length() : null,
+                exists);
+
+        return exists;
+    }
+
+    @Override
+    public boolean existURL(String content) {
+        boolean exists = content != null && content.matches(URL);
+        log.trace("Проверка наличия URL в тексте: длина={}, результат={}",
+                content != null ? content.length() : null,
+                exists);
+        return exists;
+    }
+
+    @Override
+    public String process(List<ResponseSpeller> errors, String data) {
+        log.debug("Обработка текста по результатам спеллера: errorsCount={}, dataLength={}",
+                errors != null ? errors.size() : null,
+                data != null ? data.length() : null);
+
+        if (errors == null || errors.isEmpty() || data == null || data.isEmpty()) {
+            log.debug("Нет ошибок спеллера или пустой текст, возвращаю исходный текст без изменений");
+            return data;
+        }
+
+        List<ResponseSpeller> sorted = new ArrayList<>(errors);
+        sorted.sort(Comparator.comparingInt(ResponseSpeller::pos));
+
+        StringBuilder result = new StringBuilder();
+        int currentIndex = 0;
+
+        for (ResponseSpeller error : sorted) {
+            int start = error.pos();
+            int end = start + error.len();
+
+            if (start < currentIndex || start >= data.length()) {
+                log.trace("Пропускаю некорректную позицию ошибки: start={}, currentIndex={}, dataLength={}",
+                        start, currentIndex, data.length());
+                continue;
+            }
+
+            if (end > data.length()) {
+                end = data.length();
+            }
+
+            result.append(data, currentIndex, start);
+
+
+            String replacement = (error.s() != null && !error.s().isEmpty())
+                    ? error.s().get(0)
+                    : data.substring(start, end);
+
+            log.trace("Применение исправления: pos={}, len={}, replacement='{}'",
+                    start, error.len(), replacement);
+            result.append(replacement);
+
+            currentIndex = end;
+        }
+
+        if (currentIndex < data.length()) {
+            result.append(data.substring(currentIndex));
+        }
+
+        var resultString = result.toString();
+        log.debug("Обработка текста завершена: исходная длина={}, новая длина={}",
+                data.length(), resultString.length());
+
+        return resultString;
     }
 
 

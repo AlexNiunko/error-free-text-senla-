@@ -54,6 +54,7 @@ public class TaskServiceImpl implements TaskService {
             String item = dataList.get(i);
             taskContentList.add(taskContentMapper.toTaskContent(item, i));
         }
+
         log.debug("Сформировано TaskContent элементов: {}", taskContentList.size());
         Task task = taskMapper.toTask(TaskStatus.CREATED, lang);
         Long savedTaskId = taskRepository.saveTask(task)
