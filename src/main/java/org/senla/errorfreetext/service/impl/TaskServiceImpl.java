@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.senla.errorfreetext.controller.dto.TaskRequest;
 import org.senla.errorfreetext.controller.dto.TaskResponse;
 import org.senla.errorfreetext.controller.dto.TaskResultResponse;
+import org.senla.errorfreetext.dto.ContentDto;
 import org.senla.errorfreetext.entity.Task;
 import org.senla.errorfreetext.entity.TaskContent;
 import org.senla.errorfreetext.entity.TaskStatus;
@@ -33,8 +34,8 @@ public class TaskServiceImpl implements TaskService {
     private final TaskMapper taskMapper;
     private final TaskRepository taskRepository;
 
-    @Transactional
     @Override
+    @Transactional
     public TaskResponse createTask(TaskRequest dto) {
         String data = dto.data();
         String lang = dto.lang();
@@ -61,16 +62,35 @@ public class TaskServiceImpl implements TaskService {
                 .orElseThrow(() -> new TaskSaveException("Не удалось сохранить задачу в БД"));
         log.info("Задание на обработку текста сохранено в БД, идентификатор - {}", savedTaskId);
 
-        if (!taskRepository.saveTaskContent(taskContentList,savedTaskId)) {
-            throw new TaskContentSaveException("Не удалось сохранить текст задания в БД");
+        if (!taskRepository.saveTaskContent(taskContentList, savedTaskId)) {
+            throw new TaskContentSaveException("Не удалось сохранить в БД TaskContent - фрагменты исходного текста");
         }
 
-        return new TaskResponse(savedTaskId,taskContentList.size());
+        return new TaskResponse(savedTaskId, taskContentList.size());
     }
 
     @Override
     public TaskResultResponse getTaskResult(Long id) {
         return null;
+    }
+
+    @Override
+    @Transactional
+    public List<ContentDto> getTaskContentForProcess(int taskCount) {
+
+        Long[] taskIds = taskRepository.getNewTasksForProcess(taskCount);
+        var length = taskIds.length;
+        log.info("В обработку взято - {} фрагментов текста",length);
+        if (length ==0) {
+            return List.of();
+        }
+
+        if (!taskRepository.updateTaskStatus(taskIds)) {
+            throw new TaskContentSaveException("Не удалось обновить статус заданий");
+        }
+
+
+        return taskRepository.getTaskContent(taskIds);
     }
 
 }

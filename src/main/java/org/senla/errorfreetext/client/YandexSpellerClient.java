@@ -6,17 +6,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.senla.errorfreetext.client.dto.CheckTextDto;
 import org.senla.errorfreetext.client.dto.ResponseSpeller;
 import org.senla.errorfreetext.service.ContentService;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
+
 import static org.senla.errorfreetext.client.dto.CheckTextDto.Fields.format;
-import static org.senla.errorfreetext.client.dto.CheckTextDto.Fields.text;
 import static org.senla.errorfreetext.client.dto.CheckTextDto.Fields.lang;
 import static org.senla.errorfreetext.client.dto.CheckTextDto.Fields.options;
+import static org.senla.errorfreetext.client.dto.CheckTextDto.Fields.text;
 
 @Slf4j
 @Component

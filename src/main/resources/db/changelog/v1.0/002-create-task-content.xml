@@ -29,6 +29,9 @@
             <column name="content" type="varchar(10000)">
                 <constraints nullable="false"/>
             </column>
+            <column name="is_correct" type="boolean" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
             <column name="task_id" type="bigint">
                 <constraints nullable="false"
                              foreignKeyName="fk_task_content_task"

@@ -19,6 +19,11 @@ spring:
     change-log: classpath:db/changelog/db.changelog-master.xml
 
 content-size: 100
+
+async-processor:
+  pool-size: 5
+  queue-size: 10
+
 rest-client:
   yandex-url: https://speller.yandex.net/services/spellservice.json/checkTexts
   http:

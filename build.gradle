@@ -1,21 +1,9 @@
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        classpath "org.testcontainers:postgresql:1.20.1"
-    }
-}
-
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
-
 plugins {
     id 'java'
+    id 'idea'
     id 'org.springframework.boot' version '3.4.13'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'io.freefair.lombok' version '8.4'
-    id 'nu.studer.jooq' version '9.0'
 }
 
 apply from: 'version.gradle'
@@ -34,163 +22,124 @@ repositories {
     mavenCentral()
 }
 
-configurations {
-    liquibaseRuntime
-}
-
 ext {
-    jooq = '3.19.23'
-    liquibase = '4.31.1'
-    mapstruct = '1.6.3'
-    lombok = '1.18.30'
-    slf4j = '2.0.16'
-    postgres = '42.7.8'
-    testcontainers = '1.20.1'
+    jooqVersion = '3.19.23'
+    liquibaseVersion = '4.31.1'
+    mapstructVersion = '1.6.3'
+    lombokVersion = '1.18.30'
+    slf4jVersion = '2.0.16'
+    postgresVersion = '42.7.8'
+    testcontainersVersion = '1.20.1'
 
     jooqConfig = [
-            edition    : nu.studer.gradle.jooq.JooqEdition.OSS,
             packageName: 'org.senla.jooq.generated',
-            outputDir  : 'build/generated-src/jooq/main',
+            outputDir  : "$buildDir/generated-src/jooq/main",
             changelog  : 'db/changelog/db.changelog-master.xml',
             inputSchema: 'public'
     ]
 }
 
+def generatedJooqDir = file(jooqConfig.outputDir)
+
+sourceSets {
+    jooqGenerator {
+        java {
+            srcDir 'src/jooqGenerator/java'
+        }
+        resources {
+            srcDir 'src/main/resources'
+        }
+        compileClasspath += sourceSets.main.compileClasspath
+        runtimeClasspath += output + compileClasspath
+    }
+
+    main {
+        java {
+            srcDir generatedJooqDir
+        }
+        resources {
+            srcDir 'src/main/resources'
+        }
+    }
+}
+
+configurations {
+    jooqGeneratorImplementation.extendsFrom implementation
+    jooqGeneratorCompileOnly.extendsFrom compileOnly
+    jooqGeneratorAnnotationProcessor.extendsFrom annotationProcessor
+}
+
 dependencies {
     implementation "org.springframework.boot:spring-boot-starter-web"
     implementation "org.springframework.boot:spring-boot-starter-validation"
-    implementation 'org.apache.httpcomponents.client5:httpclient5'
-
     implementation "org.springframework.boot:spring-boot-starter-jooq"
-    implementation "org.jooq:jooq:${jooq}"
-    implementation "org.postgresql:postgresql:${postgres}"
-    implementation "org.liquibase:liquibase-core:${liquibase}"
+    implementation "org.apache.httpcomponents.client5:httpclient5"
 
-    annotationProcessor "org.mapstruct:mapstruct-processor:${mapstruct}"
-    implementation "org.mapstruct:mapstruct:${mapstruct}"
+    implementation "org.jooq:jooq:${jooqVersion}"
+    implementation "org.postgresql:postgresql:${postgresVersion}"
+    implementation "org.liquibase:liquibase-core:${liquibaseVersion}"
 
-    compileOnly "org.projectlombok:lombok:${lombok}"
-    annotationProcessor "org.projectlombok:lombok:${lombok}"
+    implementation "org.mapstruct:mapstruct:${mapstructVersion}"
+    annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
 
-    testCompileOnly "org.projectlombok:lombok:${lombok}"
-    testAnnotationProcessor "org.projectlombok:lombok:${lombok}"
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
 
-    testImplementation "org.testcontainers:junit-jupiter:${testcontainers}"
-    testImplementation "org.testcontainers:postgresql:${testcontainers}"
+    testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+    testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+    testImplementation "org.testcontainers:junit-jupiter:${testcontainersVersion}"
+    testImplementation "org.testcontainers:postgresql:${testcontainersVersion}"
     testImplementation "org.junit.jupiter:junit-jupiter"
     testImplementation "org.springframework.boot:spring-boot-starter-test"
 
-    jooqGenerator "org.postgresql:postgresql:${postgres}"
-    jooqGenerator "org.slf4j:slf4j-simple:${slf4j}"
-
-    liquibaseRuntime "org.liquibase:liquibase-core:${liquibase}"
-    liquibaseRuntime "org.postgresql:postgresql:${postgres}"
-    liquibaseRuntime "org.slf4j:slf4j-simple:${slf4j}"
+    jooqGeneratorImplementation "org.jooq:jooq:${jooqVersion}"
+    jooqGeneratorImplementation "org.jooq:jooq-meta:${jooqVersion}"
+    jooqGeneratorImplementation "org.jooq:jooq-codegen:${jooqVersion}"
+    jooqGeneratorImplementation "org.postgresql:postgresql:${postgresVersion}"
+    jooqGeneratorImplementation "org.testcontainers:postgresql:${testcontainersVersion}"
+    jooqGeneratorImplementation "org.liquibase:liquibase-core:${liquibaseVersion}"
+    jooqGeneratorImplementation "org.slf4j:slf4j-simple:${slf4jVersion}"
 }
 
-test {
+tasks.named('test') {
     useJUnitPlatform()
 }
 
-def getJooqPostgres = {
-    new PostgreSQLContainer(DockerImageName.parse("postgres:16.2").asCompatibleSubstituteFor("postgres"))
-            .withDatabaseName("jooq_codegen")
-            .withUsername("postgres")
-            .withPassword("postgres")
-            .tap { start() }
-}.memoize()
-
-tasks.register('migrateJooqDb', JavaExec) {
-    mainClass = 'liquibase.integration.commandline.Main'
-
-    doFirst {
-        def pg = getJooqPostgres()
-
-        classpath = files(
-                configurations.liquibaseRuntime,
-                sourceSets.main.resources.srcDirs
-        )
-
-        args = [
-                "--changeLogFile=${jooqConfig.changelog}",
-                "--url=${pg.getJdbcUrl()}",
-                "--username=${pg.getUsername()}",
-                "--password=${pg.getPassword()}",
-                "--driver=org.postgresql.Driver",
-                "update"
-        ]
-    }
+tasks.register('cleanJooq', Delete) {
+    group = 'jooq'
+    description = 'Deletes generated jOOQ sources.'
+    delete generatedJooqDir
 }
 
-tasks.register('stopPostgreSQLContainer') {
-    doLast {
-        try {
-            def pg = getJooqPostgres()
-            if (pg != null && pg.isRunning()) {
-                pg.stop()
-                pg.close()
-            }
-        } catch (Exception ignored) {
-        }
-    }
-}
+tasks.register('generateJooq', JavaExec) {
+    group = 'jooq'
+    description = 'Generates jOOQ sources using Testcontainers + Liquibase in a dedicated JVM process.'
 
-tasks.withType(nu.studer.gradle.jooq.JooqGenerate).configureEach {
-    launcher = javaToolchains.launcherFor {
-        languageVersion = JavaLanguageVersion.of(17)
-    }
-}
+    dependsOn tasks.named('jooqGeneratorClasses')
 
-jooq {
-    version = jooq
-    edition = nu.studer.gradle.jooq.JooqEdition.OSS
+    classpath = sourceSets.jooqGenerator.runtimeClasspath
+    mainClass = 'org.senla.build.JooqGeneratorMain'
 
-    configurations {
-        main {
-            generateSchemaSourceOnCompilation = false
+    inputs.file(file("src/main/resources/${jooqConfig.changelog}"))
+    inputs.dir(file('src/main/resources/db/changelog'))
+    outputs.dir(generatedJooqDir)
 
-            generationTool {
-                logging = 'INFO'
-
-                jdbc {
-                    driver = 'org.postgresql.Driver'
-                    url = "${-> getJooqPostgres().getJdbcUrl()}"
-                    user = "${-> getJooqPostgres().getUsername()}"
-                    password = "${-> getJooqPostgres().getPassword()}"
-                }
-
-                generator {
-                    name = 'org.jooq.codegen.JavaGenerator'
-
-                    database {
-                        name = 'org.jooq.meta.postgres.PostgresDatabase'
-                        inputSchema = jooqConfig.inputSchema
-                        excludes = 'databasechangelog|databasechangeloglock'
-                    }
-
-                    target {
-                        packageName = jooqConfig.packageName
-                        directory = jooqConfig.outputDir
-                    }
-                }
-            }
-        }
-    }
-}
-
-tasks.named('generateJooq', nu.studer.gradle.jooq.JooqGenerate) {
-    dependsOn tasks.named('migrateJooqDb')
-    finalizedBy tasks.named('stopPostgreSQLContainer')
+    args = [
+            jooqConfig.packageName,
+            generatedJooqDir.absolutePath,
+            jooqConfig.changelog,
+            jooqConfig.inputSchema
+    ]
 }
 
 tasks.named('compileJava') {
     dependsOn tasks.named('generateJooq')
 }
 
-sourceSets {
-    main {
-        java {
-            srcDir jooqConfig.outputDir
-        }
+idea {
+    module {
+        sourceDirs += generatedJooqDir
+        generatedSourceDirs += generatedJooqDir
     }
 }
