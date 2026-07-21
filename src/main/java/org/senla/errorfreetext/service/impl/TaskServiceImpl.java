@@ -12,6 +12,7 @@ import org.senla.errorfreetext.entity.Task;
 import org.senla.errorfreetext.entity.TaskContent;
 import org.senla.errorfreetext.entity.TaskStatus;
 import org.senla.errorfreetext.exception.BadDataException;
+import org.senla.errorfreetext.exception.EntityNotFoundException;
 import org.senla.errorfreetext.exception.TaskContentSaveException;
 import org.senla.errorfreetext.exception.TaskSaveException;
 import org.senla.errorfreetext.mapper.TaskContentMapper;
@@ -22,6 +23,8 @@ import org.senla.errorfreetext.service.TaskService;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import static javax.management.remote.JMXConnectionNotification.FAILED;
+import static org.senla.errorfreetext.entity.TaskStatus.COMPLETED;
 import static org.senla.errorfreetext.exception.ErrorMessage.DATA_IS_NULL;
 
 @Slf4j
@@ -71,8 +74,43 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public TaskResultResponse getTaskResult(Long id) {
+        String status = taskRepository
+                .getTaskStatusById(id)
+                .orElseThrow(
+                        () -> new EntityNotFoundException(
+                                String.format("Задание на обработку текста с идентификатором - %d не найдено", id)));
+
+        log.info("Статус задачи с идентификатором - {}, {}", id, status);
+
+        TaskStatus taskStatus = TaskStatus.valueOf(status);
+
+        switch (taskStatus) {
+            case FAILED -> {
+                return getTaskResultResponseFailed(id, status);
+            }
+            case COMPLETED -> {
+                return getTaskResultResponseCompleted(task, statusName);
+            }
+            default -> {
+                return taskMapper.toTaskResultResponse(statusName);
+            }
+
+        }
+
+
         return null;
     }
+
+    private TaskResultResponse getTaskResultResponseFailed(Long taskId, String statusName) {
+        List<String> errorMessages = taskRepository.getTaskMessageErrors(taskId);
+        return TaskResultResponse.builder().status(statusName).error(errorMessages).build();
+    }
+
+    private TaskResultResponse getTaskResultResponseCompleted(Long taskId, String statusName) {
+
+      return null;
+    }
+
 
     @Override
     @Transactional
@@ -80,8 +118,8 @@ public class TaskServiceImpl implements TaskService {
 
         Long[] taskIds = taskRepository.getNewTasksForProcess(taskCount);
         var length = taskIds.length;
-        log.info("В обработку взято - {} фрагментов текста",length);
-        if (length ==0) {
+        log.info("В обработку взято - {} фрагментов текста", length);
+        if (length == 0) {
             return List.of();
         }
 
@@ -92,5 +130,6 @@ public class TaskServiceImpl implements TaskService {
 
         return taskRepository.getTaskContent(taskIds);
     }
+
 
 }

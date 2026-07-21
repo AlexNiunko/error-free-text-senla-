@@ -10,20 +10,19 @@ import org.senla.errorfreetext.entity.Task;
 import org.senla.errorfreetext.entity.TaskContent;
 import org.senla.errorfreetext.entity.TaskStatus;
 import org.senla.errorfreetext.mapper.TaskContentMapper;
-import org.senla.errorfreetext.mapper.TaskMapper;
 import org.senla.jooq.generated.tables.records.TaskContentRecord;
 import org.senla.jooq.generated.tables.records.TaskRecord;
 import org.springframework.stereotype.Component;
 
 import static org.senla.jooq.generated.Tables.TASK;
 import static org.senla.jooq.generated.Tables.TASK_CONTENT;
+import static org.senla.jooq.generated.Tables.TASK_ERROR;
 
 @Component
 @RequiredArgsConstructor
 public class TaskRepository {
 
     private final DSLContext dsl;
-    private final TaskMapper taskMapper;
     private final TaskContentMapper taskContentMapper;
 
     public Optional<Long> saveTask(Task task) {
@@ -100,6 +99,21 @@ public class TaskRepository {
                         item.get(TASK_CONTENT.ID),
                         item.get(TASK.ID)
                 ));
+    }
+
+    public Optional<String> getTaskStatusById(Long taskId) {
+        return Optional.ofNullable(dsl.select(TASK.STATUS)
+                .from(TASK)
+                .where(TASK.ID.eq(taskId))
+                .fetchOne(TASK.STATUS));
+
+    }
+
+    public List<String> getTaskMessageErrors(Long taskId) {
+        return dsl.select(TASK_ERROR.MESSAGE)
+                .from(TASK_ERROR)
+                .where(TASK_ERROR.TASK_ID.eq(taskId))
+                .fetch(TASK_ERROR.MESSAGE);
     }
 
 }
