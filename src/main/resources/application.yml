@@ -18,5 +18,5 @@ spring:
     enabled: true
     change-log: classpath:db/changelog/db.changelog-master.xml
 
-content-size: 10000
+content-size: 100
 

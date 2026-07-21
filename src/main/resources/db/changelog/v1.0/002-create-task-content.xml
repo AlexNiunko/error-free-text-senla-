@@ -13,7 +13,7 @@
             </not>
         </preConditions>
 
-        <createTable tableName="task_content">
+        <createTable tableName="task_content" schemaName="public">
             <column name="id" type="bigserial">
                 <constraints primaryKey="true" nullable="false" primaryKeyName="pk_task_content"/>
             </column>

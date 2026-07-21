@@ -1,3 +1,14 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.testcontainers:postgresql:1.20.1"
+    }
+}
+
+import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.utility.DockerImageName
 
 plugins {
     id 'java'
@@ -23,23 +34,27 @@ repositories {
     mavenCentral()
 }
 
+configurations {
+    liquibaseRuntime
+}
+
 ext {
     jooq = '3.19.23'
     liquibase = '4.31.1'
     mapstruct = '1.6.3'
     lombok = '1.18.30'
     slf4j = '2.0.16'
+    postgres = '42.7.8'
+    testcontainers = '1.20.1'
 
     jooqConfig = [
             edition    : nu.studer.gradle.jooq.JooqEdition.OSS,
             packageName: 'org.senla.jooq.generated',
             outputDir  : 'build/generated-src/jooq/main',
-            rootPath   : 'src/main/resources',
-            changelog  : 'db/changelog/db.changelog-master.xml'
+            changelog  : 'db/changelog/db.changelog-master.xml',
+            inputSchema: 'public'
     ]
-
 }
-
 
 dependencies {
     implementation "org.springframework.boot:spring-boot-starter-web"
@@ -47,27 +62,76 @@ dependencies {
 
     implementation "org.springframework.boot:spring-boot-starter-jooq"
     implementation "org.jooq:jooq:${jooq}"
-    implementation "org.postgresql:postgresql"
+    implementation "org.postgresql:postgresql:${postgres}"
     implementation "org.liquibase:liquibase-core:${liquibase}"
 
     annotationProcessor "org.mapstruct:mapstruct-processor:${mapstruct}"
     implementation "org.mapstruct:mapstruct:${mapstruct}"
 
+    compileOnly "org.projectlombok:lombok:${lombok}"
+    annotationProcessor "org.projectlombok:lombok:${lombok}"
 
     testCompileOnly "org.projectlombok:lombok:${lombok}"
     testAnnotationProcessor "org.projectlombok:lombok:${lombok}"
 
-    testImplementation "org.testcontainers:junit-jupiter"
+    testImplementation "org.testcontainers:junit-jupiter:${testcontainers}"
+    testImplementation "org.testcontainers:postgresql:${testcontainers}"
     testImplementation "org.junit.jupiter:junit-jupiter"
     testImplementation "org.springframework.boot:spring-boot-starter-test"
 
-    jooqGenerator "org.jooq:jooq-meta-extensions-liquibase:${jooq}"
-    jooqGenerator "org.liquibase:liquibase-core:${liquibase}"
+    jooqGenerator "org.postgresql:postgresql:${postgres}"
     jooqGenerator "org.slf4j:slf4j-simple:${slf4j}"
+
+    liquibaseRuntime "org.liquibase:liquibase-core:${liquibase}"
+    liquibaseRuntime "org.postgresql:postgresql:${postgres}"
+    liquibaseRuntime "org.slf4j:slf4j-simple:${slf4j}"
 }
 
 test {
     useJUnitPlatform()
+}
+
+def getJooqPostgres = {
+    new PostgreSQLContainer(DockerImageName.parse("postgres:16.2").asCompatibleSubstituteFor("postgres"))
+            .withDatabaseName("jooq_codegen")
+            .withUsername("postgres")
+            .withPassword("postgres")
+            .tap { start() }
+}.memoize()
+
+tasks.register('migrateJooqDb', JavaExec) {
+    mainClass = 'liquibase.integration.commandline.Main'
+
+    doFirst {
+        def pg = getJooqPostgres()
+
+        classpath = files(
+                configurations.liquibaseRuntime,
+                sourceSets.main.resources.srcDirs
+        )
+
+        args = [
+                "--changeLogFile=${jooqConfig.changelog}",
+                "--url=${pg.getJdbcUrl()}",
+                "--username=${pg.getUsername()}",
+                "--password=${pg.getPassword()}",
+                "--driver=org.postgresql.Driver",
+                "update"
+        ]
+    }
+}
+
+tasks.register('stopPostgreSQLContainer') {
+    doLast {
+        try {
+            def pg = getJooqPostgres()
+            if (pg != null && pg.isRunning()) {
+                pg.stop()
+                pg.close()
+            }
+        } catch (Exception ignored) {
+        }
+    }
 }
 
 tasks.withType(nu.studer.gradle.jooq.JooqGenerate).configureEach {
@@ -82,30 +146,25 @@ jooq {
 
     configurations {
         main {
-            generateSchemaSourceOnCompilation = true
+            generateSchemaSourceOnCompilation = false
 
             generationTool {
                 logging = 'INFO'
+
+                jdbc {
+                    driver = 'org.postgresql.Driver'
+                    url = "${-> getJooqPostgres().getJdbcUrl()}"
+                    user = "${-> getJooqPostgres().getUsername()}"
+                    password = "${-> getJooqPostgres().getPassword()}"
+                }
 
                 generator {
                     name = 'org.jooq.codegen.JavaGenerator'
 
                     database {
-                        name = 'org.jooq.meta.extensions.liquibase.LiquibaseDatabase'
-                        properties {
-                            property {
-                                key = 'rootPath'
-                                value = jooqConfig.rootPath
-                            }
-                            property {
-                                key = 'scripts'
-                                value = jooqConfig.changelog
-                            }
-                            property {
-                                key = 'includeLiquibaseTables'
-                                value = 'false'
-                            }
-                        }
+                        name = 'org.jooq.meta.postgres.PostgresDatabase'
+                        inputSchema = jooqConfig.inputSchema
+                        excludes = 'databasechangelog|databasechangeloglock'
                     }
 
                     target {
@@ -118,3 +177,19 @@ jooq {
     }
 }
 
+tasks.named('generateJooq', nu.studer.gradle.jooq.JooqGenerate) {
+    dependsOn tasks.named('migrateJooqDb')
+    finalizedBy tasks.named('stopPostgreSQLContainer')
+}
+
+tasks.named('compileJava') {
+    dependsOn tasks.named('generateJooq')
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir jooqConfig.outputDir
+        }
+    }
+}

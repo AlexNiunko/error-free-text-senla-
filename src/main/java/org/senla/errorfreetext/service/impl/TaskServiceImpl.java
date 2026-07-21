@@ -11,8 +11,11 @@ import org.senla.errorfreetext.entity.Task;
 import org.senla.errorfreetext.entity.TaskContent;
 import org.senla.errorfreetext.entity.TaskStatus;
 import org.senla.errorfreetext.exception.BadDataException;
+import org.senla.errorfreetext.exception.TaskContentSaveException;
+import org.senla.errorfreetext.exception.TaskSaveException;
 import org.senla.errorfreetext.mapper.TaskContentMapper;
 import org.senla.errorfreetext.mapper.TaskMapper;
+import org.senla.errorfreetext.repositoy.TaskRepository;
 import org.senla.errorfreetext.service.ContentService;
 import org.senla.errorfreetext.service.TaskService;
 import org.springframework.stereotype.Component;
@@ -28,6 +31,7 @@ public class TaskServiceImpl implements TaskService {
     private final ContentService contentService;
     private final TaskContentMapper taskContentMapper;
     private final TaskMapper taskMapper;
+    private final TaskRepository taskRepository;
 
     @Transactional
     @Override
@@ -52,9 +56,15 @@ public class TaskServiceImpl implements TaskService {
         }
         log.debug("Сформировано TaskContent элементов: {}", taskContentList.size());
         Task task = taskMapper.toTask(TaskStatus.CREATED, lang);
+        Long savedTaskId = taskRepository.saveTask(task)
+                .orElseThrow(() -> new TaskSaveException("Не удалось сохранить задачу в БД"));
+        log.info("Задание на обработку текста сохранено в БД, идентификатор - {}", savedTaskId);
 
+        if (!taskRepository.saveTaskContent(taskContentList,savedTaskId)) {
+            throw new TaskContentSaveException("Не удалось сохранить текст задания в БД");
+        }
 
-        return null;
+        return new TaskResponse(savedTaskId,taskContentList.size());
     }
 
     @Override

@@ -26,7 +26,7 @@ public class TaskController {
     public TaskResponse createTask(@RequestBody @Valid TaskRequest dto) {
         log.info("Создание задачи по запросу: data='{}', lang='{}'", dto.data(), dto.lang());
         TaskResponse task = taskService.createTask(dto);
-        log.info("Задача успешно создана: taskId={}, createdAt={}", task.taskId(), task.createdAt());
+        log.info("Задача успешно создана: taskId={}, contentCount={}", task.taskId(), task.contentCount());
         return task;
     }
 
