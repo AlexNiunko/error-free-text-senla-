@@ -31,6 +31,10 @@ public interface TaskContentMapper {
     @Mapping(target = "lang", source = "dto.lang")
     @Mapping(target = "data", source = "fixedData")
     @Mapping(target = "position", source = "dto.position")
-    ContentDto toContentDto(ContentDto dto,String fixedData);
+    ContentDto toContentDto(ContentDto dto, String fixedData);
+
+    @Mapping(target = "data", source = "data")
+    @Mapping(target = "position", source = "position")
+    ContentDto toContentDto(Integer position, String data);
 
 }

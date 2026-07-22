@@ -116,4 +116,15 @@ public class TaskRepository {
                 .fetch(TASK_ERROR.MESSAGE);
     }
 
+    public List<ContentDto> getContentDto(Long taskId){
+        return dsl.select(TASK_CONTENT.CONTENT,TASK_CONTENT.POSITION)
+                .from(TASK_CONTENT)
+                .where(TASK_CONTENT.TASK_ID.eq(taskId))
+                .fetch(item->taskContentMapper.toContentDto(
+                        item.get(TASK_CONTENT.POSITION),
+                        item.get(TASK_CONTENT.CONTENT)
+                ));
+
+    }
+
 }

@@ -23,8 +23,6 @@ import org.senla.errorfreetext.service.TaskService;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import static javax.management.remote.JMXConnectionNotification.FAILED;
-import static org.senla.errorfreetext.entity.TaskStatus.COMPLETED;
 import static org.senla.errorfreetext.exception.ErrorMessage.DATA_IS_NULL;
 
 @Slf4j
@@ -89,28 +87,15 @@ public class TaskServiceImpl implements TaskService {
                 return getTaskResultResponseFailed(id, status);
             }
             case COMPLETED -> {
-                return getTaskResultResponseCompleted(task, statusName);
+                return getTaskResultResponseCompleted(id, status);
             }
             default -> {
-                return taskMapper.toTaskResultResponse(statusName);
+                return taskMapper.toTaskResultResponse(status);
             }
 
         }
 
-
-        return null;
     }
-
-    private TaskResultResponse getTaskResultResponseFailed(Long taskId, String statusName) {
-        List<String> errorMessages = taskRepository.getTaskMessageErrors(taskId);
-        return TaskResultResponse.builder().status(statusName).error(errorMessages).build();
-    }
-
-    private TaskResultResponse getTaskResultResponseCompleted(Long taskId, String statusName) {
-
-      return null;
-    }
-
 
     @Override
     @Transactional
@@ -131,5 +116,20 @@ public class TaskServiceImpl implements TaskService {
         return taskRepository.getTaskContent(taskIds);
     }
 
+    private TaskResultResponse getTaskResultResponseFailed(Long taskId, String statusName) {
+        List<String> errorMessages = taskRepository.getTaskMessageErrors(taskId);
+        return TaskResultResponse.builder().status(statusName).error(errorMessages).build();
+    }
+
+    private TaskResultResponse getTaskResultResponseCompleted(Long taskId, String statusName) {
+        List<ContentDto> content = taskRepository.getContentDto(taskId);
+
+        if (content.isEmpty()) {
+            log.info("По задаче с идентификатором - {} отсутствует контент", taskId);
+            return TaskResultResponse.builder().status(statusName).build();
+        }
+
+        return TaskResultResponse.builder().status(statusName).data(contentService.buildData(content)).build();
+    }
 
 }
