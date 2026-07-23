@@ -8,8 +8,7 @@ import org.jooq.DSLContext;
 import org.senla.errorfreetext.dto.ContentDto;
 import org.senla.errorfreetext.dto.ErrorDto;
 import org.senla.errorfreetext.dto.TaskDto;
-import org.senla.errorfreetext.entity.TaskContent;
-import org.senla.errorfreetext.entity.TaskStatus;
+import org.senla.errorfreetext.dto.TaskStatus;
 import org.senla.errorfreetext.mapper.TaskContentMapper;
 import org.senla.jooq.generated.tables.records.TaskContentRecord;
 import org.senla.jooq.generated.tables.records.TaskErrorRecord;
@@ -39,12 +38,12 @@ public class TaskRepository {
 
     }
 
-    public boolean saveTaskContent(List<TaskContent> taskContentList, Long taskId) {
+    public boolean saveTaskContent(List<ContentDto> taskContentList, Long taskId) {
 
         List<TaskContentRecord> taskContentRecord = taskContentList.stream().map(item -> {
             TaskContentRecord contentRecord = dsl.newRecord(TASK_CONTENT);
-            contentRecord.setPosition(item.getPosition());
-            contentRecord.setContent(item.getContent());
+            contentRecord.setPosition(item.position());
+            contentRecord.setContent(item.data());
             contentRecord.setTaskId(taskId);
             return contentRecord;
         }).toList();

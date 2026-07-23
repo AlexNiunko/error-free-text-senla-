@@ -36,10 +36,8 @@ public class TaskProcessScheduler {
             log.info("Новых задач для обработки не найдено");
             return;
         }
+
         log.info("Найдено {} задач для обработки", listForProcess.size());
-        for (ContentDto forProcess : listForProcess) {
-            log.info(" {}",forProcess);
-        }
 
         List<CompletableFuture<ProcessedContentDto>> contentInProcess = new ArrayList<>();
 
@@ -60,7 +58,5 @@ public class TaskProcessScheduler {
 
         log.info("Финал пакетной обработки на корректировку текста, обработано - {} фрагментов текста ",saveProcessedTask);
 
-
     }
-
 }

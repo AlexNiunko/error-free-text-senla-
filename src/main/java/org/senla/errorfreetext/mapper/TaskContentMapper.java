@@ -5,14 +5,13 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.senla.errorfreetext.client.dto.CheckTextDto;
 import org.senla.errorfreetext.dto.ContentDto;
-import org.senla.errorfreetext.entity.TaskContent;
 
 @Mapper(componentModel = "spring")
 public interface TaskContentMapper {
 
     @Mapping(target = "position", source = "position")
-    @Mapping(target = "content", source = "content")
-    TaskContent toTaskContent(String content, Integer position);
+    @Mapping(target = "data", source = "content")
+    ContentDto toTaskContent(String content, Integer position);
 
     @Mapping(target = "taskId", source = "taskId")
     @Mapping(target = "contentId", source = "contentId")
@@ -36,5 +35,13 @@ public interface TaskContentMapper {
     @Mapping(target = "data", source = "data")
     @Mapping(target = "position", source = "position")
     ContentDto toContentDto(Integer position, String data);
+
+    @Mapping(target = "isCorrect", source = "isCorrect")
+    @Mapping(target = "taskId", source = "dto.taskId")
+    @Mapping(target = "contentId", source = "dto.contentId")
+    @Mapping(target = "lang", source = "dto.lang")
+    @Mapping(target = "data", source = "dto.data")
+    @Mapping(target = "position", source = "dto.position")
+    ContentDto toContentDto(ContentDto dto, boolean isCorrect);
 
 }

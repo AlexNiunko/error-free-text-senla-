@@ -7,7 +7,6 @@ import org.senla.errorfreetext.controller.dto.TaskResultResponse;
 @Mapper(componentModel = "spring")
 public interface TaskMapper {
 
-
     @Mapping(target = "status", source = "status")
     TaskResultResponse toTaskResultResponse(String status);
 

@@ -1,4 +1,4 @@
-package org.senla.errorfreetext.entity;
+package org.senla.errorfreetext.dto;
 
 public enum TaskStatus {
     CREATED,

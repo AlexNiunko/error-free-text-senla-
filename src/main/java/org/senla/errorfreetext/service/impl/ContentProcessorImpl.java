@@ -31,52 +31,65 @@ public class ContentProcessorImpl implements ContentProcessor {
 
         if (contentDto == null) {
             log.error("Фрагмент текста равен null");
-            return CompletableFuture
-                    .failedFuture(new ContentProcessException("Ошибка при обработке фрагмента текста, ссылка на null"));
+            return CompletableFuture.failedFuture(
+                    new ContentProcessException("Ошибка при обработке фрагмента текста: ссылка на null")
+            );
         }
 
-        var contentDataId = contentDto.contentId();
-        var taskId = contentDto.taskId();
-        var data = contentDto.data();
-        var lang = contentDto.lang();
-        log.info("Обработка фрагмента задачи(ContentDto): taskId={}, contentDataId={}", taskId, contentDataId);
+        Long contentDataId = contentDto.contentId();
+        Long taskId = contentDto.taskId();
+        String data = contentDto.data();
+        String lang = contentDto.lang();
+
+        log.info("Обработка фрагмента задачи: taskId={}, contentDataId={}", taskId, contentDataId);
 
         try {
             List<ResponseSpeller> response =
                     yandexSpellerClient.checkText(taskContentMapper.toCheckTextDto(data, lang));
+
             String fixedData = contentService.process(response, data);
 
-            ProcessedContentDto result = new ProcessedContentDto(
-                    taskContentMapper.toContentDto(contentDto, fixedData),
-                    null);
+            ContentDto processedContent = taskContentMapper.toContentDto(contentDto, fixedData);
+            return CompletableFuture.completedFuture(new ProcessedContentDto(processedContent, null));
 
-            return CompletableFuture.completedFuture(result);
-
-        } catch (RestClientException exception) {
-            log.error("Ошибка вызова сервиса при обработке фрагмента текста contentDataId - {}, taskId - {}: {}",
+        } catch (RestClientException ex) {
+            return buildFailedResult(
+                    contentDto,
                     contentDataId,
                     taskId,
-                    exception.getMessage());
-
-            String errorMessage = String.join(
-                    String.format("Ошибка вызова сервиса при обработке фрагмента текста contentDataId - %d, taskId - %d",
-                            contentDataId, taskId), exception.getMessage());
-
-            return CompletableFuture.completedFuture(new ProcessedContentDto(contentDto, errorMessage));
-        } catch (Exception e) {
-
-            log.error("Непредвиденная ошибка при обработке фрагмента сервиса contentDataId={}, taskId={}: {}",
+                    "Ошибка вызова сервиса при обработке фрагмента текста",
+                    ex
+            );
+        } catch (Exception ex) {
+            return buildFailedResult(
+                    contentDto,
                     contentDataId,
                     taskId,
-                    e.getMessage());
-
-            String errorMessage = String.join(
-                    String.format("Непредвиденная ошибка вызова сервиса при обработке фрагмента текста contentDataId - %d, taskId - %d",
-                            contentDataId, taskId), e.getMessage());
-
-            return CompletableFuture.completedFuture(new ProcessedContentDto(contentDto, errorMessage)
+                    "Непредвиденная ошибка при обработке фрагмента текста",
+                    ex
             );
         }
+    }
 
+    private CompletableFuture<ProcessedContentDto> buildFailedResult(
+            ContentDto source,
+            Long contentDataId,
+            Long taskId,
+            String messagePrefix,
+            Exception ex
+    ) {
+        log.error("{}: contentDataId={}, taskId={}, error={}",
+                messagePrefix, contentDataId, taskId, ex.getMessage());
+
+        String errorMessage = String.format(
+                "%s: contentDataId=%d, taskId=%d, error=%s",
+                messagePrefix,
+                contentDataId,
+                taskId,
+                ex.getMessage()
+        );
+
+        ContentDto errorContent = taskContentMapper.toContentDto(source, false);
+        return CompletableFuture.completedFuture(new ProcessedContentDto(errorContent, errorMessage));
     }
 }
