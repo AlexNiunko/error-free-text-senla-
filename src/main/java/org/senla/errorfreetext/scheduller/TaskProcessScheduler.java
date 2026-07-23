@@ -28,35 +28,41 @@ public class TaskProcessScheduler {
 
     @Scheduled(fixedDelayString = "${scheduler.interval-ms}")
     public void runBatchProcessor() {
-        log.info("Запуск пакетной обработки задач на корректировку текста ");
+        try {
+            log.info("Запуск пакетной обработки задач на корректировку текста ");
 
-        List<ContentDto> listForProcess = taskService.getTaskContentForProcess(batchSize);
+            List<ContentDto> listForProcess = taskService.getTaskContentForProcess(batchSize);
 
-        if (listForProcess.isEmpty()) {
-            log.info("Новых задач для обработки не найдено");
-            return;
+            if (listForProcess.isEmpty()) {
+                log.info("Новых задач для обработки не найдено");
+                return;
+            }
+
+            log.info("Найдено {} задач для обработки", listForProcess.size());
+
+            List<CompletableFuture<ProcessedContentDto>> contentInProcess = new ArrayList<>();
+
+            for (ContentDto task : listForProcess) {
+                contentInProcess.add(contentProcessor.processTaskAsync(task));
+            }
+
+            List<ProcessedContentDto> processed = contentInProcess.stream()
+                    .map(CompletableFuture::join)
+                    .toList();
+
+            Map<Long, List<ProcessedContentDto>> byContentId =
+                    processed.stream().collect(Collectors.groupingBy(item -> item.contentDto().taskId()));
+
+            log.info("Обработано фрагментов текста - {}",processed.size());
+
+            var saveProcessedTask = taskService.saveProcessedTask(byContentId);
+
+            log.info("Финал пакетной обработки на корректировку текста, обработано - {} фрагментов текста ",saveProcessedTask);
+
+        } catch (Exception e) {
+            log.error("Ошибка в шедуллере пакетной обработки задач, batchSize={}: {}",
+                    batchSize, e.getMessage(), e);
         }
-
-        log.info("Найдено {} задач для обработки", listForProcess.size());
-
-        List<CompletableFuture<ProcessedContentDto>> contentInProcess = new ArrayList<>();
-
-        for (ContentDto task : listForProcess) {
-            contentInProcess.add(contentProcessor.processTaskAsync(task));
-        }
-
-        List<ProcessedContentDto> processed = contentInProcess.stream()
-                .map(CompletableFuture::join)
-                .toList();
-
-        Map<Long, List<ProcessedContentDto>> byContentId =
-                processed.stream().collect(Collectors.groupingBy(item -> item.contentDto().taskId()));
-
-        log.info("Обработано фрагментов текста - {}",processed.size());
-
-        var saveProcessedTask = taskService.saveProcessedTask(byContentId);
-
-        log.info("Финал пакетной обработки на корректировку текста, обработано - {} фрагментов текста ",saveProcessedTask);
 
     }
 }

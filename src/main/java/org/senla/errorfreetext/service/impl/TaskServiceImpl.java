@@ -23,7 +23,8 @@ import org.senla.errorfreetext.exception.TaskContentSaveException;
 import org.senla.errorfreetext.exception.TaskSaveException;
 import org.senla.errorfreetext.mapper.TaskContentMapper;
 import org.senla.errorfreetext.mapper.TaskMapper;
-import org.senla.errorfreetext.repositoy.TaskRepository;
+import org.senla.errorfreetext.repository.TaskContentRepository;
+import org.senla.errorfreetext.repository.TaskRepository;
 import org.senla.errorfreetext.service.ContentService;
 import org.senla.errorfreetext.service.TaskService;
 import org.springframework.stereotype.Component;
@@ -40,6 +41,7 @@ public class TaskServiceImpl implements TaskService {
     private final TaskContentMapper taskContentMapper;
     private final TaskMapper taskMapper;
     private final TaskRepository taskRepository;
+    private final TaskContentRepository taskContentRepository;
 
     @Override
     @Transactional
@@ -68,7 +70,7 @@ public class TaskServiceImpl implements TaskService {
                 .orElseThrow(() -> new TaskSaveException("Не удалось сохранить задачу в БД"));
         log.info("Задание на обработку текста сохранено в БД, идентификатор - {}", savedTaskId);
 
-        if (!taskRepository.saveTaskContent(taskContentList, savedTaskId)) {
+        if (!taskContentRepository.saveTaskContent(taskContentList, savedTaskId)) {
             throw new TaskContentSaveException("Не удалось сохранить в БД TaskContent - фрагменты исходного текста");
         }
 
@@ -108,7 +110,7 @@ public class TaskServiceImpl implements TaskService {
     public int saveProcessedTask(Map<Long, List<ProcessedContentDto>> input) {
         Long[] keys = input.keySet().toArray(Long[]::new);
 
-        List<ContentDto> contentBeforeProcess = taskRepository.getTaskContentByTaskId(keys);
+        List<ContentDto> contentBeforeProcess = taskContentRepository.getTaskContentByTaskId(keys);
         log.info("Получен из БД список фрагментов текста для сверки - {}", contentBeforeProcess);
 
         Map<Long, List<ContentDto>> mapBeforeProcess = contentBeforeProcess.stream()
@@ -135,7 +137,7 @@ public class TaskServiceImpl implements TaskService {
 
         var result = taskRepository.saveProcessedTask(getTaskForUpdate(afterProcessCorrect, afterProcessFailed));
 
-        var processedContent = taskRepository.saveProcessedContent(getContentForUpdate(input));
+        var processedContent = taskContentRepository.saveProcessedContent(getContentForUpdate(input));
         log.info("Обработано - {} фрагментов текста", processedContent);
 
         int errorResult = taskRepository.saveError(getErrorDtoList(afterProcessFailed));
@@ -157,7 +159,7 @@ public class TaskServiceImpl implements TaskService {
 
         log.info("Количество задач с измененным статусом - {} ", updatedTasks);
 
-        return taskRepository.getTaskContentByTaskStatus(TaskStatus.IN_PROGRESS.toString());
+        return taskContentRepository.getTaskContentForProcess(TaskStatus.IN_PROGRESS.toString());
     }
 
     private TaskResultResponse getTaskResultResponseFailed(Long taskId, String statusName) {
@@ -166,7 +168,7 @@ public class TaskServiceImpl implements TaskService {
     }
 
     private TaskResultResponse getTaskResultResponseCompleted(Long taskId, String statusName) {
-        List<ContentDto> content = taskRepository.getContentDto(taskId);
+        List<ContentDto> content = taskContentRepository.getContentDto(taskId);
 
         if (content.isEmpty()) {
             log.info("По задаче с идентификатором - {} отсутствует контент", taskId);

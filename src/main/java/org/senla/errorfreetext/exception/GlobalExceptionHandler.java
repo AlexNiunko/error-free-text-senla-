@@ -12,60 +12,97 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    public static final String DELIMITER = ": ";
-    public static final String MESSAGE_DELIMITER = "; ";
+    private static final String DELIMITER = ": ";
+    private static final String MESSAGE_DELIMITER = "; ";
+    private static final String INTERNAL_ERROR_MESSAGE = "Внутренняя ошибка сервера";
 
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler({MethodArgumentNotValidException.class})
-    public ResponseEntity<ErrorResponse> handleValidationErrors(MethodArgumentNotValidException ex, HttpServletRequest request) {
-
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidationErrors(
+            MethodArgumentNotValidException ex,
+            HttpServletRequest request
+    ) {
         Map<String, String> errors = new HashMap<>();
 
         ex.getBindingResult()
                 .getFieldErrors()
                 .forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
 
-        var status = ex.getStatusCode();
-
-        var errorMessage = errors.entrySet().stream()
+        String errorMessage = errors.entrySet().stream()
                 .map(entry -> String.join(DELIMITER, entry.getKey(), entry.getValue()))
                 .collect(Collectors.joining(MESSAGE_DELIMITER));
 
-        log.warn("Validation error on [{} {}]: {} -> {}",
+        log.warn("Ошибка валидации [{} {}]: {}",
                 request.getMethod(),
                 request.getRequestURI(),
-                errors,
-                errorMessage
-        );
+                errorMessage);
 
-        return ResponseEntity.status(status)
-                .body(getResponseDto(ErrorCode.VALIDATION_ERROR.getCode(), errorMessage, request.getRequestURI()));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(buildResponse(
+                        ErrorCode.VALIDATION.getCode(),
+                        errorMessage,
+                        request.getRequestURI()
+                ));
     }
 
     @ExceptionHandler(ServiceException.class)
-    public ResponseEntity<ErrorResponse> handleBusinessErrors(ServiceException ex, HttpServletRequest request) {
-        var httpStatus = ex.getHttpStatus();
+    public ResponseEntity<ErrorResponse> handleServiceException(
+            ServiceException ex,
+            HttpServletRequest request
+    ) {
+        HttpStatus status = ex.getHttpStatus();
+        ErrorCode errorCode = mapErrorCode(status);
         String message = ex.getMessage();
 
-        log.warn("Бизнес-ошибка при обработке запроса [{} {}]: status={}, code={}, message={}",
+        log.warn("Сервисная ошибка [{} {}]: status={}, code={}, message={}",
                 request.getMethod(),
                 request.getRequestURI(),
-                httpStatus.value(),
-                ErrorCode.TASK_NOT_FOUND.getCode(),
+                status.value(),
+                errorCode.getCode(),
                 message);
 
-        return ResponseEntity.status(httpStatus)
-                .body(getResponseDto(ErrorCode.TASK_NOT_FOUND.getCode(), message, request.getRequestURI()));
+        return ResponseEntity.status(status)
+                .body(buildResponse(
+                        errorCode.getCode(),
+                        message,
+                        request.getRequestURI()
+                ));
     }
 
-    private ErrorResponse getResponseDto(String errorCode, String errorMessage, String path) {
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleUnhandledException(
+            Exception ex,
+            HttpServletRequest request
+    ) {
+        log.error("Непредвиденная ошибка [{} {}]: {}",
+                request.getMethod(),
+                request.getRequestURI(),
+                ex.getMessage(),
+                ex);
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(buildResponse(
+                        ErrorCode.INTERNAL_ERROR.getCode(),
+                        INTERNAL_ERROR_MESSAGE,
+                        request.getRequestURI()
+                ));
+    }
+
+    private ErrorCode mapErrorCode(HttpStatus status) {
+        return switch (status) {
+            case BAD_REQUEST -> ErrorCode.VALIDATION;
+            case NOT_FOUND -> ErrorCode.NOT_FOUND;
+            case INTERNAL_SERVER_ERROR -> ErrorCode.INTERNAL_ERROR;
+            default -> ErrorCode.INTERNAL_ERROR;
+        };
+    }
+
+    private ErrorResponse buildResponse(String errorCode, String errorMessage, String path) {
         return ErrorResponse.builder()
                 .errorCode(errorCode)
                 .errorMessage(errorMessage)
@@ -77,11 +114,10 @@ public class GlobalExceptionHandler {
     @Getter
     @AllArgsConstructor
     enum ErrorCode {
-        VALIDATION_ERROR("40001"),
-        TASK_NOT_FOUND("40401");
+        VALIDATION("40001"),
+        NOT_FOUND("40401"),
+        INTERNAL_ERROR("50001");
 
         private final String code;
-
     }
-
 }
