@@ -24,6 +24,10 @@ async-processor:
   pool-size: 5
   queue-size: 10
 
+scheduler:
+  interval-ms: 10000
+  batch-size: 10
+
 rest-client:
   yandex-url: https://speller.yandex.net/services/spellservice.json/checkTexts
   http:
@@ -34,3 +38,8 @@ rest-client:
     idle-evict-seconds: 30
     max-total: 100
     max-per-route: 20
+
+logging:
+  level:
+    org.senla.errorfreetext: TRACE
+    org.jooq.tools.LoggerListener: DEBUG

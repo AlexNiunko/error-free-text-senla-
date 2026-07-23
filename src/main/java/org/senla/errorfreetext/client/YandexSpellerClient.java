@@ -30,7 +30,7 @@ public class YandexSpellerClient {
     private final ContentService contentService;
 
     public List<ResponseSpeller> checkText(CheckTextDto dto) {
-        log.debug("Отправка текста в Yandex Speller: textLength={}, lang={}, format={}",
+        log.info("Отправка текста в Yandex Speller: textLength={}, lang={}, format={}",
                 dto.text() != null ? dto.text().length() : null,
                 dto.lang(),
                 dto.format());
@@ -44,12 +44,12 @@ public class YandexSpellerClient {
                 .body(new ParameterizedTypeReference<>() {});
 
         if (allTexts == null || allTexts.isEmpty()) {
-            log.debug("Yandex Speller вернул пустой список ошибок");
+            log.info("Yandex Speller вернул пустой список ошибок");
             return List.of();
         }
 
         List<ResponseSpeller> result = allTexts.get(0);
-        log.debug("Yandex Speller обработал текст: errorsCount={}", result.size());
+        log.info("Yandex Speller обработал текст: errorsCount={}", result.size());
         return result;
     }
 

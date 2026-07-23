@@ -34,23 +34,48 @@ public class ContentProcessorImpl implements ContentProcessor {
             return CompletableFuture
                     .failedFuture(new ContentProcessException("Ошибка при обработке фрагмента текста, ссылка на null"));
         }
+
         var contentDataId = contentDto.contentId();
         var taskId = contentDto.taskId();
         var data = contentDto.data();
         var lang = contentDto.lang();
-        log.debug("Обработка фрагмента задачи(ContentDto): taskId={}, contentDataId={}", taskId, contentDataId);
+        log.info("Обработка фрагмента задачи(ContentDto): taskId={}, contentDataId={}", taskId, contentDataId);
 
         try {
             List<ResponseSpeller> response =
                     yandexSpellerClient.checkText(taskContentMapper.toCheckTextDto(data, lang));
             String fixedData = contentService.process(response, data);
-            ProcessedContentDto result = new ProcessedContentDto(taskContentMapper.toContentDto(contentDto, fixedData), null);
+
+            ProcessedContentDto result = new ProcessedContentDto(
+                    taskContentMapper.toContentDto(contentDto, fixedData),
+                    null);
+
             return CompletableFuture.completedFuture(result);
+
         } catch (RestClientException exception) {
-            log.error("Ошибка при обработке фрагмента текста contentDataId - {}, taskId - {}", contentDataId, taskId);
-            String errorMessage =
-                    String.format("Ошибка при обработке фрагмента текста contentDataId - %d, taskId - %d", contentDataId, taskId);
+            log.error("Ошибка вызова сервиса при обработке фрагмента текста contentDataId - {}, taskId - {}: {}",
+                    contentDataId,
+                    taskId,
+                    exception.getMessage());
+
+            String errorMessage = String.join(
+                    String.format("Ошибка вызова сервиса при обработке фрагмента текста contentDataId - %d, taskId - %d",
+                            contentDataId, taskId), exception.getMessage());
+
             return CompletableFuture.completedFuture(new ProcessedContentDto(contentDto, errorMessage));
+        } catch (Exception e) {
+
+            log.error("Непредвиденная ошибка при обработке фрагмента сервиса contentDataId={}, taskId={}: {}",
+                    contentDataId,
+                    taskId,
+                    e.getMessage());
+
+            String errorMessage = String.join(
+                    String.format("Непредвиденная ошибка вызова сервиса при обработке фрагмента текста contentDataId - %d, taskId - %d",
+                            contentDataId, taskId), e.getMessage());
+
+            return CompletableFuture.completedFuture(new ProcessedContentDto(contentDto, errorMessage)
+            );
         }
 
     }

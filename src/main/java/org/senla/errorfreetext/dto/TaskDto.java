@@ -1,7 +1,7 @@
 package org.senla.errorfreetext.dto;
 
-public record CreateTaskDto(
+public record TaskDto(
         Long id,
-        String lang
+        String status
 ) {
 }
