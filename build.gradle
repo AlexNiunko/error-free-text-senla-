@@ -27,13 +27,12 @@ ext {
     liquibaseVersion = '4.31.1'
     mapstructVersion = '1.6.3'
     lombokVersion = '1.18.30'
-    slf4jVersion = '2.0.16'
     postgresVersion = '42.7.8'
     testcontainersVersion = '1.20.1'
 
     jooqConfig = [
             packageName: 'org.senla.jooq.generated',
-            outputDir  : "$buildDir/generated-src/jooq/main",
+            outputDir  : 'src/main/generated-jooq',
             changelog  : 'db/changelog/db.changelog-master.xml',
             inputSchema: 'public'
     ]
@@ -96,7 +95,6 @@ dependencies {
     jooqGeneratorImplementation "org.postgresql:postgresql:${postgresVersion}"
     jooqGeneratorImplementation "org.testcontainers:postgresql:${testcontainersVersion}"
     jooqGeneratorImplementation "org.liquibase:liquibase-core:${liquibaseVersion}"
-    jooqGeneratorImplementation "org.slf4j:slf4j-simple:${slf4jVersion}"
 }
 
 tasks.named('test') {
@@ -122,16 +120,16 @@ tasks.register('generateJooq', JavaExec) {
     inputs.dir(file('src/main/resources/db/changelog'))
     outputs.dir(generatedJooqDir)
 
+    doFirst {
+        generatedJooqDir.mkdirs()
+    }
+
     args = [
             jooqConfig.packageName,
             generatedJooqDir.absolutePath,
             jooqConfig.changelog,
             jooqConfig.inputSchema
     ]
-}
-
-tasks.named('compileJava') {
-    dependsOn tasks.named('generateJooq')
 }
 
 idea {

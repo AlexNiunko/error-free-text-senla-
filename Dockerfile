@@ -2,7 +2,7 @@ FROM openjdk:17-alpine@sha256:a996cdcc040704ec6badaf5fecf1e144c096e00231a2918859
 WORKDIR /app
 
 COPY gradle gradle
-COPY build.gradle settings.gradle version.gradle gradlew lombok.config ./
+COPY build.gradle version.gradle gradlew lombok.config ./
 COPY src src
 
 RUN ./gradlew build -x test
