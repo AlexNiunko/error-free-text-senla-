@@ -30,8 +30,6 @@ import org.senla.errorfreetext.service.TaskService;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import static org.senla.errorfreetext.exception.ErrorMessage.DATA_IS_NULL;
-
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -54,7 +52,7 @@ public class TaskServiceImpl implements TaskService {
 
         if (data == null) {
             log.warn("Попытка создать задачу с null-данными");
-            throw new BadDataException(DATA_IS_NULL);
+            throw new BadDataException("Текст для корректировки - null");
         }
 
         List<String> dataList = contentService.divide(data);

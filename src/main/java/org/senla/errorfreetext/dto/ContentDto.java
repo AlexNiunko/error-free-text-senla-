@@ -11,4 +11,5 @@ public record ContentDto(
         Long taskId,
         boolean isCorrect
 ) {
+
 }
