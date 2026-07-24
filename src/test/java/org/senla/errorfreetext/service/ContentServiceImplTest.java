@@ -20,10 +20,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @RequiredArgsConstructor
 class ContentServiceImplTest {
 
-    private final ContentService contentService = new ContentServiceImpl(100);
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-
     private static final String DATA_FOR_DIVIDE = """
             В истории Центральной и Восточной Европы немного найдется правителей, чья жизнь была бы столь же насыщена
             драматическими поворотами,военными триумфами и политическими интригами, как жизнь великого князя литовского
@@ -33,7 +29,8 @@ class ContentServiceImplTest {
             сюзерен огромных русских земель, союзник и враг Тевтонского ордена, двоюродный брат польского короля — всё
             это Витовт, или, как почтительно называли его современники, Витовт Великий .
             """;
-
+    private final ContentService contentService = new ContentServiceImpl(100);
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     void testDivideData() {
@@ -98,7 +95,7 @@ class ContentServiceImplTest {
         String expected = outputRoot.get("text").asText();
 
         var actual = contentService.process(resp, inputText);
-        assertEquals(expected,actual);
+        assertEquals(expected, actual);
 
 
     }

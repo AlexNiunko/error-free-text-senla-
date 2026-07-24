@@ -2,11 +2,7 @@ package org.senla.errorfreetext.service.impl;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.senla.errorfreetext.controller.dto.TaskRequest;
@@ -105,40 +101,22 @@ public class TaskServiceImpl implements TaskService {
 
     @Transactional
     @Override
-    public int saveProcessedTask(Map<Long, List<ProcessedContentDto>> input) {
-        Long[] keys = input.keySet().toArray(Long[]::new);
+    public int saveProcessedTask(List<ProcessedContentDto> input) {
+        Long[] keys = input.stream().map(ProcessedContentDto::taskId).toArray(Long[]::new);
 
         List<ContentDto> contentBeforeProcess = taskContentRepository.getTaskContentByTaskId(keys);
         log.info("Получен из БД список фрагментов текста для сверки - {}", contentBeforeProcess);
 
-        Map<Long, List<ContentDto>> mapBeforeProcess = contentBeforeProcess.stream()
-                .collect(Collectors.groupingBy(ContentDto::taskId));
-        log.info("Карта - {}", mapBeforeProcess);
+        List<TaskDto> processedTask = input.stream()
+                .map(item -> new TaskDto(item.taskId(), getTaskStatus(item.errorMessage()).toString()))
+                .toList();
 
-        Map<Long, List<ProcessedContentDto>> afterProcessCorrect = new HashMap<>();
-        Map<Long, List<ProcessedContentDto>> afterProcessFailed = new HashMap<>();
-
-        for (Map.Entry<Long, List<ProcessedContentDto>> inputEntry : input.entrySet()) {
-            Long key = inputEntry.getKey();
-
-            List<ProcessedContentDto> value = inputEntry.getValue();
-
-            List<ProcessedContentDto> errorContent = value.stream().filter(item -> item.errorMessage() != null).toList();
-
-            if (errorContent.isEmpty() && mapBeforeProcess.get(key).size() == value.size()) {
-                afterProcessCorrect.put(key, value);
-            } else {
-                afterProcessFailed.put(key, errorContent);
-            }
-
-        }
-
-        var result = taskRepository.saveProcessedTask(getTaskForUpdate(afterProcessCorrect, afterProcessFailed));
+        var result = taskRepository.saveProcessedTask(processedTask);
 
         var processedContent = taskContentRepository.saveProcessedContent(getContentForUpdate(input));
         log.info("Обработано - {} фрагментов текста", processedContent);
 
-        int errorResult = taskRepository.saveError(getErrorDtoList(afterProcessFailed));
+        int errorResult = taskRepository.saveError(getErrorDtoList(input));
         log.info("Были сохранены ошибки обработки фрагментов текста в количестве - {}", errorResult);
 
         return result;
@@ -176,31 +154,28 @@ public class TaskServiceImpl implements TaskService {
         return TaskResultResponse.builder().status(statusName).data(contentService.buildData(content)).build();
     }
 
-    private List<ErrorDto> getErrorDtoList(Map<Long, List<ProcessedContentDto>> afterProcessFailed) {
-        return afterProcessFailed.values().stream().flatMap(List::stream)
-                .map(item -> ErrorDto.builder().taskId(item.contentDto().taskId())
-                        .message(item.errorMessage()).build()).toList();
+    private List<ErrorDto> getErrorDtoList(List<ProcessedContentDto> input) {
+        return input.stream()
+                .filter(item -> item.errorMessage() != null)
+                .map(item -> ErrorDto.builder()
+                        .taskId(item.taskId())
+                        .message(item.errorMessage()).build())
+                .toList();
     }
 
-    private List<ContentDto> getContentForUpdate(Map<Long, List<ProcessedContentDto>> input) {
-        return input.values().stream()
-                .flatMap(List::stream)
+    private List<ContentDto> getContentForUpdate(List<ProcessedContentDto> input) {
+        return input.stream()
+                .flatMap(item -> item.contentDto().stream())
                 .map(item -> ContentDto.builder()
-                        .contentId(item.contentDto().contentId())
-                        .isCorrect(item.contentDto().isCorrect())
-                        .data(item.contentDto().data())
+                        .contentId(item.contentId())
+                        .isCorrect(item.isCorrect())
+                        .data(item.data())
                         .build())
                 .toList();
     }
 
-    private List<TaskDto> getTaskForUpdate(Map<Long, List<ProcessedContentDto>> afterProcessCorrect,
-                                           Map<Long, List<ProcessedContentDto>> afterProcessFailed) {
-        return Stream.concat(
-                        afterProcessCorrect.keySet().stream()
-                                .map(item -> new TaskDto(item, TaskStatus.COMPLETED.toString())),
-                        afterProcessFailed.keySet().stream()
-                                .map(item -> new TaskDto(item, TaskStatus.FAILED.toString())))
-                .toList();
+    private TaskStatus getTaskStatus(String errorMessage) {
+        return errorMessage == null ? TaskStatus.COMPLETED : TaskStatus.FAILED;
     }
 
 }

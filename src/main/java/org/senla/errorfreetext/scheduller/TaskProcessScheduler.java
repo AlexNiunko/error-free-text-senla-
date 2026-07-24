@@ -40,22 +40,24 @@ public class TaskProcessScheduler {
 
             log.info("Найдено {} задач для обработки", listForProcess.size());
 
+            Map<Long, List<ContentDto>> contentMap = listForProcess.stream().collect(Collectors.groupingBy(ContentDto::taskId));
+
             List<CompletableFuture<ProcessedContentDto>> contentInProcess = new ArrayList<>();
 
-            for (ContentDto task : listForProcess) {
-                contentInProcess.add(contentProcessor.processTaskAsync(task));
+            for (Map.Entry<Long, List<ContentDto>> entry : contentMap.entrySet()) {
+                var taskId = entry.getKey();
+                var contentDtoList = entry.getValue();
+
+                contentInProcess.add(contentProcessor.processTaskAsync(taskId, contentDtoList));
             }
 
             List<ProcessedContentDto> processed = contentInProcess.stream()
                     .map(CompletableFuture::join)
                     .toList();
 
-            Map<Long, List<ProcessedContentDto>> byContentId =
-                    processed.stream().collect(Collectors.groupingBy(item -> item.contentDto().taskId()));
+            log.info("Обработано задач по исправлению текста - {}", processed.size());
 
-            log.info("Обработано фрагментов текста - {}", processed.size());
-
-            var saveProcessedTask = taskService.saveProcessedTask(byContentId);
+            var saveProcessedTask = taskService.saveProcessedTask(processed);
 
             log.info("Финал пакетной обработки на корректировку текста, обработано - {} фрагментов текста ", saveProcessedTask);
 

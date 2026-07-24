@@ -1,8 +1,6 @@
 package org.senla.errorfreetext.service;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -273,7 +272,7 @@ class TaskServiceImplTest {
                 ContentDto.builder().taskId(2L).contentId(20L).position(0).data("part2").build()
         );
 
-        when(taskRepository.getNewTasksForProcess(batchSize,TaskStatus.CREATED.toString())).thenReturn(taskIds);
+        when(taskRepository.getNewTasksForProcess(batchSize, TaskStatus.CREATED.toString())).thenReturn(taskIds);
         when(taskRepository.updateTaskStatus(taskIds)).thenReturn(updatedCount);
         when(taskContentRepository.getTaskContentForProcess(TaskStatus.IN_PROGRESS.toString()))
                 .thenReturn(content);
@@ -282,7 +281,7 @@ class TaskServiceImplTest {
 
         assertEquals(content, actual);
 
-        verify(taskRepository).getNewTasksForProcess(batchSize,TaskStatus.CREATED.toString());
+        verify(taskRepository).getNewTasksForProcess(batchSize, TaskStatus.CREATED.toString());
         verify(taskRepository).updateTaskStatus(taskIds);
         verify(taskContentRepository).getTaskContentForProcess(TaskStatus.IN_PROGRESS.toString());
     }
@@ -300,7 +299,7 @@ class TaskServiceImplTest {
                 .data("original")
                 .build();
 
-        ContentDto processedContentDto = ContentDto.builder()
+        ContentDto processedContent = ContentDto.builder()
                 .taskId(taskId)
                 .contentId(contentId)
                 .position(0)
@@ -308,10 +307,13 @@ class TaskServiceImplTest {
                 .isCorrect(true)
                 .build();
 
-        ProcessedContentDto processed = new ProcessedContentDto(processedContentDto, null);
+        ProcessedContentDto processed = new ProcessedContentDto(
+                List.of(processedContent),
+                null,
+                taskId
+        );
 
-        Map<Long, List<ProcessedContentDto>> input = new HashMap<>();
-        input.put(taskId, List.of(processed));
+        List<ProcessedContentDto> input = List.of(processed);
 
         ContentDto contentForUpdate = ContentDto.builder()
                 .contentId(contentId)
@@ -319,8 +321,9 @@ class TaskServiceImplTest {
                 .isCorrect(true)
                 .build();
 
-        when(taskContentRepository.getTaskContentByTaskId(new Long[]{taskId}))
-                .thenReturn(List.of(original));
+        when(taskContentRepository.getTaskContentByTaskId(argThat(ids ->
+                ids != null && ids.length == 1 && ids[0].equals(taskId)
+        ))).thenReturn(List.of(original));
 
         when(taskRepository.saveProcessedTask(
                 List.of(new TaskDto(taskId, TaskStatus.COMPLETED.toString()))
@@ -336,7 +339,9 @@ class TaskServiceImplTest {
 
         assertEquals(1, result);
 
-        verify(taskContentRepository).getTaskContentByTaskId(new Long[]{taskId});
+        verify(taskContentRepository).getTaskContentByTaskId(argThat(ids ->
+                ids != null && ids.length == 1 && ids[0].equals(taskId)
+        ));
         verify(taskRepository).saveProcessedTask(
                 List.of(new TaskDto(taskId, TaskStatus.COMPLETED.toString()))
         );
@@ -358,7 +363,7 @@ class TaskServiceImplTest {
                 .data("original")
                 .build();
 
-        ContentDto errorContentDto = ContentDto.builder()
+        ContentDto errorContent = ContentDto.builder()
                 .taskId(taskId)
                 .contentId(contentId)
                 .position(0)
@@ -366,11 +371,13 @@ class TaskServiceImplTest {
                 .isCorrect(false)
                 .build();
 
-        ProcessedContentDto processedWithError =
-                new ProcessedContentDto(errorContentDto, "Ошибка обработки");
+        ProcessedContentDto processedWithError = new ProcessedContentDto(
+                List.of(errorContent),
+                "Ошибка обработки",
+                taskId
+        );
 
-        Map<Long, List<ProcessedContentDto>> input = new HashMap<>();
-        input.put(taskId, List.of(processedWithError));
+        List<ProcessedContentDto> input = List.of(processedWithError);
 
         ContentDto contentForUpdate = ContentDto.builder()
                 .contentId(contentId)
@@ -385,8 +392,9 @@ class TaskServiceImplTest {
                         .build()
         );
 
-        when(taskContentRepository.getTaskContentByTaskId(new Long[]{taskId}))
-                .thenReturn(List.of(original));
+        when(taskContentRepository.getTaskContentByTaskId(argThat(ids ->
+                ids != null && ids.length == 1 && ids[0].equals(taskId)
+        ))).thenReturn(List.of(original));
 
         when(taskRepository.saveProcessedTask(
                 List.of(new TaskDto(taskId, TaskStatus.FAILED.toString()))
@@ -402,7 +410,9 @@ class TaskServiceImplTest {
 
         assertEquals(1, result);
 
-        verify(taskContentRepository).getTaskContentByTaskId(new Long[]{taskId});
+        verify(taskContentRepository).getTaskContentByTaskId(argThat(ids ->
+                ids != null && ids.length == 1 && ids[0].equals(taskId)
+        ));
         verify(taskRepository).saveProcessedTask(
                 List.of(new TaskDto(taskId, TaskStatus.FAILED.toString()))
         );

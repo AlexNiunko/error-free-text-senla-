@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
         xsi:schemaLocation="
            http://www.liquibase.org/xml/ns/dbchangelog
            http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
@@ -9,7 +9,8 @@
     <changeSet id="4-create-set-updated-at-function" author="AlexNiunko" dbms="postgresql">
         <sql splitStatements="false">
             CREATE OR REPLACE FUNCTION set_updated_at()
-                RETURNS TRIGGER AS $$
+                RETURNS TRIGGER AS
+            $$
             BEGIN
                 NEW.updated_at = CURRENT_TIMESTAMP;
                 RETURN NEW;

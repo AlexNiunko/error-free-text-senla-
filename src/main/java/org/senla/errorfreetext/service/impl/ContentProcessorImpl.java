@@ -1,5 +1,6 @@
 package org.senla.errorfreetext.service.impl;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import lombok.RequiredArgsConstructor;
@@ -8,7 +9,6 @@ import org.senla.errorfreetext.client.YandexSpellerClient;
 import org.senla.errorfreetext.client.dto.ResponseSpeller;
 import org.senla.errorfreetext.dto.ContentDto;
 import org.senla.errorfreetext.dto.ProcessedContentDto;
-import org.senla.errorfreetext.exception.ContentProcessException;
 import org.senla.errorfreetext.mapper.TaskContentMapper;
 import org.senla.errorfreetext.service.ContentProcessor;
 import org.senla.errorfreetext.service.ContentService;
@@ -27,69 +27,55 @@ public class ContentProcessorImpl implements ContentProcessor {
 
     @Override
     @Async("taskProcessingExecutor")
-    public CompletableFuture<ProcessedContentDto> processTaskAsync(ContentDto contentDto) {
-
-        if (contentDto == null) {
-            log.error("Фрагмент текста равен null");
-            return CompletableFuture.failedFuture(
-                    new ContentProcessException("Ошибка при обработке фрагмента текста: ссылка на null")
-            );
-        }
-
-        Long contentDataId = contentDto.contentId();
-        Long taskId = contentDto.taskId();
-        String data = contentDto.data();
-        String lang = contentDto.lang();
-
-        log.info("Обработка фрагмента задачи: taskId={}, contentDataId={}", taskId, contentDataId);
-
+    public CompletableFuture<ProcessedContentDto> processTaskAsync(Long taskId, List<ContentDto> contentDto) {
+        List<ContentDto> processedContentDto = new ArrayList<>();
         try {
-            List<ResponseSpeller> response =
-                    yandexSpellerClient.checkText(taskContentMapper.toCheckTextDto(data, lang));
+            for (ContentDto dto : contentDto) {
 
-            String fixedData = contentService.process(response, data);
+                String data = dto.data();
+                String lang = dto.lang();
+                List<ResponseSpeller> response =
+                        yandexSpellerClient.checkText(taskContentMapper.toCheckTextDto(data, lang));
 
-            ContentDto processedContent = taskContentMapper.toContentDto(contentDto, fixedData);
-            return CompletableFuture.completedFuture(new ProcessedContentDto(processedContent, null));
+                String fixedData = contentService.process(response, data);
 
+                ContentDto processedContent = taskContentMapper.toContentDto(dto, fixedData);
+                processedContentDto.add(processedContent);
+            }
+            return CompletableFuture.completedFuture(new ProcessedContentDto(processedContentDto, null, taskId));
         } catch (RestClientException ex) {
             return buildFailedResult(
-                    contentDto,
-                    contentDataId,
+                    processedContentDto,
                     taskId,
                     "Ошибка вызова сервиса при обработке фрагмента текста",
                     ex
             );
-        } catch (Exception ex) {
+        } catch (Exception e) {
             return buildFailedResult(
-                    contentDto,
-                    contentDataId,
+                    processedContentDto,
                     taskId,
                     "Непредвиденная ошибка при обработке фрагмента текста",
-                    ex
+                    e
             );
         }
     }
 
     private CompletableFuture<ProcessedContentDto> buildFailedResult(
-            ContentDto source,
-            Long contentDataId,
+            List<ContentDto> source,
             Long taskId,
             String messagePrefix,
             Exception ex
     ) {
-        log.error("{}: contentDataId={}, taskId={}, error={}",
-                messagePrefix, contentDataId, taskId, ex.getMessage());
+        log.error("{}:, taskId={}, error={}",
+                messagePrefix, taskId, ex.getMessage());
 
         String errorMessage = String.format(
-                "%s: contentDataId=%d, taskId=%d, error=%s",
+                "%s: taskId=%d, error=%s",
                 messagePrefix,
-                contentDataId,
                 taskId,
                 ex.getMessage()
         );
 
-        ContentDto errorContent = taskContentMapper.toContentDto(source, false);
-        return CompletableFuture.completedFuture(new ProcessedContentDto(errorContent, errorMessage));
+        return CompletableFuture.completedFuture(new ProcessedContentDto(source, errorMessage, taskId));
     }
 }

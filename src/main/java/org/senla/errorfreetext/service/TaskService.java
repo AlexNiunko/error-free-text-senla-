@@ -1,7 +1,6 @@
 package org.senla.errorfreetext.service;
 
 import java.util.List;
-import java.util.Map;
 import org.senla.errorfreetext.controller.dto.TaskRequest;
 import org.senla.errorfreetext.controller.dto.TaskResponse;
 import org.senla.errorfreetext.controller.dto.TaskResultResponse;
@@ -16,6 +15,6 @@ public interface TaskService {
 
     List<ContentDto> getTaskContentForProcess(int taskCount);
 
-    int saveProcessedTask(Map<Long, List<ProcessedContentDto>> map);
+    int saveProcessedTask(List<ProcessedContentDto> list);
 
 }
