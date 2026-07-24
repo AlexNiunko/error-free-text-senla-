@@ -19,6 +19,7 @@ create table if not exists public.task_content
     created_at timestamp(6),
     updated_at timestamp(6),
     content    varchar(10000),
+    is_correct boolean,
     task_id    serial not null
         constraint fk_task_content_task
             references public.task
@@ -37,4 +38,6 @@ create table if not exists public.task_error
         constraint fk_task_error_task
             references public.task
 );
+
+
 

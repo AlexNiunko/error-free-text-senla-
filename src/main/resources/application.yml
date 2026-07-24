@@ -35,6 +35,8 @@ async-processor:
 scheduler:
   interval-ms: 10000
   batch-size: 10
+  pool-size: 1
+  enabled: true
 
 rest-client:
   yandex-url: https://speller.yandex.net/services/spellservice.json/checkTexts

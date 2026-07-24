@@ -273,7 +273,7 @@ class TaskServiceImplTest {
                 ContentDto.builder().taskId(2L).contentId(20L).position(0).data("part2").build()
         );
 
-        when(taskRepository.getNewTasksForProcess(batchSize)).thenReturn(taskIds);
+        when(taskRepository.getNewTasksForProcess(batchSize,TaskStatus.CREATED.toString())).thenReturn(taskIds);
         when(taskRepository.updateTaskStatus(taskIds)).thenReturn(updatedCount);
         when(taskContentRepository.getTaskContentForProcess(TaskStatus.IN_PROGRESS.toString()))
                 .thenReturn(content);
@@ -282,7 +282,7 @@ class TaskServiceImplTest {
 
         assertEquals(content, actual);
 
-        verify(taskRepository).getNewTasksForProcess(batchSize);
+        verify(taskRepository).getNewTasksForProcess(batchSize,TaskStatus.CREATED.toString());
         verify(taskRepository).updateTaskStatus(taskIds);
         verify(taskContentRepository).getTaskContentForProcess(TaskStatus.IN_PROGRESS.toString());
     }

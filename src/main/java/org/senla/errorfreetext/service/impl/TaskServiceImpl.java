@@ -149,7 +149,7 @@ public class TaskServiceImpl implements TaskService {
     @Transactional
     public List<ContentDto> getTaskContentForProcess(int taskCount) {
 
-        Long[] taskIds = taskRepository.getNewTasksForProcess(taskCount);
+        Long[] taskIds = taskRepository.getNewTasksForProcess(taskCount, TaskStatus.CREATED.toString());
 
         log.info("Найдены задачи со статусом CREATED, идентификаторы - {} ", Arrays.toString(taskIds));
 

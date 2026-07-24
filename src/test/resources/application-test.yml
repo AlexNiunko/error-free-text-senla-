@@ -7,3 +7,6 @@ spring:
 
   liquibase:
     enabled: true
+
+scheduler:
+  enabled: false

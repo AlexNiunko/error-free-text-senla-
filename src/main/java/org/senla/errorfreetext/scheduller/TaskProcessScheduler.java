@@ -53,11 +53,11 @@ public class TaskProcessScheduler {
             Map<Long, List<ProcessedContentDto>> byContentId =
                     processed.stream().collect(Collectors.groupingBy(item -> item.contentDto().taskId()));
 
-            log.info("Обработано фрагментов текста - {}",processed.size());
+            log.info("Обработано фрагментов текста - {}", processed.size());
 
             var saveProcessedTask = taskService.saveProcessedTask(byContentId);
 
-            log.info("Финал пакетной обработки на корректировку текста, обработано - {} фрагментов текста ",saveProcessedTask);
+            log.info("Финал пакетной обработки на корректировку текста, обработано - {} фрагментов текста ", saveProcessedTask);
 
         } catch (Exception e) {
             log.error("Ошибка в шедуллере пакетной обработки задач, batchSize={}: {}",

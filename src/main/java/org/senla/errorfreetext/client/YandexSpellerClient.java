@@ -41,7 +41,8 @@ public class YandexSpellerClient {
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(body)
                 .retrieve()
-                .body(new ParameterizedTypeReference<>() {});
+                .body(new ParameterizedTypeReference<>() {
+                });
 
         if (allTexts == null || allTexts.isEmpty()) {
             log.info("Yandex Speller вернул пустой список ошибок");

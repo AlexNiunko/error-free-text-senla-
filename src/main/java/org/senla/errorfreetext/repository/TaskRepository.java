@@ -8,7 +8,7 @@ import org.senla.errorfreetext.dto.TaskDto;
 public interface TaskRepository {
     Optional<Long> saveTask(String lang);
 
-    Long[] getNewTasksForProcess(int numberOfTasks);
+    Long[] getNewTasksForProcess(int numberOfTasks, String status);
 
     int updateTaskStatus(Long[] tasks);
 

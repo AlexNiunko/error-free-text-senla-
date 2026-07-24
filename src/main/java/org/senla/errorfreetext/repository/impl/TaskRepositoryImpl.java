@@ -36,11 +36,11 @@ public class TaskRepositoryImpl implements TaskRepository {
     }
 
     @Override
-    public Long[] getNewTasksForProcess(int numberOfTasks) {
+    public Long[] getNewTasksForProcess(int numberOfTasks, String status) {
 
         return dsl.select(TASK.ID, TASK.LANGUAGE)
                 .from(TASK)
-                .where(TASK.STATUS.eq(TaskStatus.CREATED.toString()))
+                .where(TASK.STATUS.eq(status))
                 .limit(numberOfTasks)
                 .forUpdate()
                 .skipLocked()
