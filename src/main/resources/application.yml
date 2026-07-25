@@ -26,7 +26,7 @@ spring:
     enabled: true
     change-log: classpath:db/changelog/db.changelog-master.xml
 
-content-size: 100
+content-size: 10000
 
 async-processor:
   pool-size: 5
@@ -51,5 +51,5 @@ rest-client:
 
 logging:
   level:
-    org.senla.errorfreetext: TRACE
+    org.senla.errorfreetext: DEBUG
     org.jooq.tools.LoggerListener: DEBUG
