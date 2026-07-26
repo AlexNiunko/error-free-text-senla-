@@ -34,17 +34,17 @@ Error Free Text — сервис для проверки текста на ор�
 ## 3. Кратко об архитектуре
 
 <ul>
-  <li><code>Task</code> — основная сущность задачи с полями статуса, языка и версией для optimistic locking.</li>
-  <li><code>TaskContent</code> — отдельный фрагмент текста, отправляемый в Yandex.Speller.</li>
-  <li><code>TaskError</code> — хранилище ошибок обработки (REST‑ошибки, конфликты версий и т.п.).</li>
+  <li><code>task</code> — основная сущность задачи с полями статуса, языка.</li>
+  <li><code>task_content</code> — отдельный фрагмент текста, отправляемый в Yandex.Speller.</li>
+  <li><code>task_error</code> — хранилище ошибок обработки (REST‑ошибки, конфликты версий и т.п.).</li>
 </ul>
 
 Обработка выглядит так:
 
 <ol>
-  <li><code>TaskBatchProcessor</code> выбирает порцию задач со статусом <code>CREATED</code>, переводит их в <code>IN_PROGRESS</code> и запускает асинхронную обработку.</li>
-  <li><code>TaskProcessor</code> (через <code>@Async</code> и <code>CompletableFuture</code>) вызывает Yandex.Speller для каждого фрагмента текста, применяет правки и выставляет итоговый статус.</li>
-  <li><code>TaskSaver</code> сохраняет изменённые задачи и, при необходимости, ошибки. При <code>Exception</code> задача переводится в <code>FAILED</code> и фиксируется отдельная ошибка.</li>
+  <li><code>TaskProcessScheduler</code> выбирает порцию задач со статусом <code>CREATED</code>, переводит их в <code>IN_PROGRESS</code> и запускает асинхронную обработку для каждой задачи.</li>
+  <li><code>ContentProcessor</code> (через <code>@Async</code> и <code>CompletableFuture</code>) вызывает Yandex.Speller для каждого фрагмента текста, применяет правки и выставляет итоговый статус.</li>
+  <li><code>TaskService</code> сохраняет изменённые задачи и, при необходимости, ошибки. При <code>Exception</code> задача переводится в <code>FAILED</code> и фиксируется отдельная ошибка.</li>
 </ol>
 
 ---
@@ -52,8 +52,8 @@ Error Free Text — сервис для проверки текста на ор�
 # 4. Асинхронность и блокировки
 
 <ul>
-  <li>Асинхронная обработка реализована на уровне задач: для каждой <code>Task</code> создаётся <code>CompletableFuture&lt;Task&gt;</code>, который выполняется в пуле <code>taskProcessingExecutor</code>.</li>
-  <li>Выборка задач для пакетной обработки выполняется под пессимистической блокировкой на уровне PostgreSQL (через SELECT ... FOR UPDATE). Это гарантирует, что один и тот же Task не попадёт параллельно в разные батчи и не будет обрабатываться конкурентно.</li>
+  <li>Асинхронная обработка реализована на уровне задач: для каждой <code>task</code> создаётся <code>CompletableFuture&lt;ProcessedContentDto&gt;</code>, который выполняется в пуле <code>taskProcessingExecutor</code>.</li>
+  <li>Выборка задач для пакетной обработки выполняется под пессимистической блокировкой на уровне PostgreSQL (через SELECT ... FOR UPDATE). Это гарантирует, что один и тот же task не попадёт параллельно в разные батчи и не будет обрабатываться конкурентно.</li>
 </ul>
 
 ---
